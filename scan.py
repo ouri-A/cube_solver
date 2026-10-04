@@ -13,7 +13,8 @@ becomes UP. The screen then walks you through the other five faces:
        then tip the TOP TOWARDS you                 SPACE
     D  tip the top AWAY twice (bottom faces you)    SPACE
 
-Hold each face less than 45 degrees from upright. SPACE only reads a face
+A small cube in the instruction bar plays each turn the way it will look
+on screen (guide_anim.py): copy it. Hold each face less than 45 degrees from upright. SPACE only reads a face
 while the grid is locked (green or cyan). After the sixth face the colours
 are resolved (resolve.py), checked, and solved with kociemba; the moves are
 for the cube held as it was for the FRONT face.
@@ -49,6 +50,7 @@ import cv2
 import numpy as np
 
 import line_track as lt
+import guide_anim
 from cube_model import FACES, SOLVED, apply_moves
 from resolve import Resolution, resolve
 from sample import FaceReading, lab_to_bgr, read_face
@@ -69,6 +71,8 @@ WINDOW = "scan"
 KEY_ESC, KEY_SPACE, KEY_BACKSPACE = 27, 32, 8
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 SWATCH = 12                      # px per sticker in the progress strip
+BANNER = 92                      # px, height of the black instruction bar
+GUIDE_PX = 86                    # px, the animated turn guide inside it
 
 
 @dataclass
@@ -178,25 +182,25 @@ def draw_strip(view, session: ScanSession) -> None:
         text(view, f, (x0 + SWATCH, y0 + 3 * SWATCH + 14), 0.45)
 
 
-def draw_prompt(view, session: ScanSession, locked: bool, flash: str | None) -> None:
+def draw_prompt(view, session: ScanSession, locked: bool, flash: str | None, t: float) -> None:
+    """Instruction bar: the step's text on the left, the animated turn guide
+    on the right. t: seconds since this step began, drives the animation."""
     h, w = view.shape[:2]
     face = session.next_face
-    cv2.rectangle(view, (0, h - 62), (w, h), (0, 0, 0), -1)
+    cv2.rectangle(view, (0, h - BANNER), (w, h), (0, 0, 0), -1)
     if face is None:
         return
     line1, line2 = INSTRUCTIONS[face]
-    text(view, f"{len(session.readings) + 1}/6  {line1}", (10, h - 38))
-    text(view, line2 if line2 != "<" else "Then press SPACE.", (10, h - 12))
-    if line2 == "<" or face == "U":       # turn left: arrow pointing left
-        cv2.arrowedLine(view, (w - 250, h - 31), (w - 310, h - 31), (0, 255, 255), 4, cv2.LINE_AA, tipLength=0.35)
-    if face in "UD":                        # tip: top comes down towards you (U) or goes up away (D)
-        top, bottom = (w - 225, h - 54), (w - 225, h - 8)
-        cv2.arrowedLine(view, *((top, bottom) if face == "U" else (bottom, top)), (255, 200, 0), 4,
-                        cv2.LINE_AA, tipLength=0.35)
-    status = "grid locked: SPACE" if locked else "no grid yet"
-    text(view, status, (w - 190, h - 12), 0.5, (0, 255, 0) if locked else (0, 160, 255))
+    text(view, f"{len(session.readings) + 1}/6  {line1}", (10, h - 62))
+    text(view, line2 if line2 != "<" else "Copy the cube on the right.", (10, h - 36))
+    status = "grid locked: press SPACE" if locked else "no grid yet"
+    text(view, status, (10, h - 10), 0.5, (0, 255, 0) if locked else (0, 160, 255))
+    known = {f: [lab_to_bgr(c) for c in r.lab_mean] for f, r in session.readings.items()}
+    guide = guide_anim.render(face, known, t, session.mirror, GUIDE_PX)
+    y0, x0 = h - BANNER + (BANNER - GUIDE_PX) // 2, w - GUIDE_PX - 6
+    view[y0:y0 + GUIDE_PX, x0:x0 + GUIDE_PX] = guide
     if flash:
-        text(view, flash, (10, h - 72), 0.6, (0, 200, 255))
+        text(view, flash, (10, h - BANNER - 10), 0.6, (0, 200, 255))
 
 
 def draw_result(view, result: Result) -> None:
@@ -229,6 +233,7 @@ def main() -> int:
         return 1
     tracker, session = lt.LineTracker(), ScanSession(mirror=args.mirror)
     result, flash, flash_until = None, None, 0.0
+    step_face, step_started = None, time.time()      # restart the guide animation on each new step
     try:
         while True:
             ok, frame = cam.read()
@@ -244,8 +249,11 @@ def main() -> int:
             if result is None:
                 lt.draw(view, tracker, mode, ms)
             draw_strip(view, session)
+            if session.next_face != step_face:
+                step_face, step_started = session.next_face, time.time()
             if result is None:
-                draw_prompt(view, session, locked, flash if time.time() < flash_until else None)
+                draw_prompt(view, session, locked, flash if time.time() < flash_until else None,
+                            time.time() - step_started)
             else:
                 draw_result(view, result)
             cv2.imshow(WINDOW, view)

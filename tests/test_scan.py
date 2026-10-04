@@ -61,4 +61,5 @@ def test_undo_and_drawing_do_not_crash():
     assert session.next_face == "F"
     view = frame.copy()
     scan.draw_strip(view, session)
-    scan.draw_prompt(view, session, True, "flash")
+    for t in (0.0, 1.0, 5.0):
+        scan.draw_prompt(view, session, True, "flash", t)
