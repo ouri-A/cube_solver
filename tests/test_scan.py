@@ -63,3 +63,27 @@ def test_undo_and_drawing_do_not_crash():
     scan.draw_strip(view, session)
     for t in (0.0, 1.0, 5.0):
         scan.draw_prompt(view, session, True, "flash", t)
+
+
+class FakePopen:
+    calls = []
+
+    def __init__(self, args):
+        FakePopen.calls.append(args)
+
+
+def test_viewer_opens_on_the_saved_scan(tmp_path, monkeypatch):
+    monkeypatch.setattr(scan.subprocess, "Popen", FakePopen)
+    FakePopen.calls = []
+    result = scan.Result(resolution=None, solution="R U", error=None, wrong=None, folder=tmp_path)
+    scan.open_viewer(result)
+    (args,) = FakePopen.calls
+    assert args[1].endswith("sim_view.py") and args[2] == str(tmp_path / "scan.json")
+
+
+def test_no_viewer_without_a_solution(tmp_path, monkeypatch):
+    monkeypatch.setattr(scan.subprocess, "Popen", FakePopen)
+    FakePopen.calls = []
+    result = scan.Result(resolution=None, solution=None, error="parity", wrong=None, folder=tmp_path)
+    assert scan.open_viewer(result) is None
+    assert FakePopen.calls == []

@@ -21,10 +21,13 @@ for the cube held as it was for the FRONT face.
 
 Every scan is saved to scans/<time>/: scan.json (raw readings, state,
 checks, solution) and one PNG per face, so it can be re-resolved offline.
+When the scan solves, sim_view.py opens on it in its own window and plays
+the solution on the scanned cube.
 
     uv run scan.py                     camera 0
     uv run scan.py 1                   camera 1
     uv run scan.py --mirror            the camera delivers a mirrored image
+    uv run scan.py --no-view           do not open the 3D solve viewer
     uv run scan.py --expect "R U F'"   scramble a solved cube with these moves
                                        (holding it as you will for FRONT),
                                        then scan: wrong stickers are listed
@@ -40,6 +43,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
@@ -225,6 +229,7 @@ def main() -> int:
     parser.add_argument("source", nargs="?", default="0", help="camera index (default 0)")
     parser.add_argument("--mirror", action="store_true", help="the camera image is mirrored")
     parser.add_argument("--expect", help="moves applied to a solved cube before scanning")
+    parser.add_argument("--no-view", action="store_true", help="do not open the 3D solve viewer")
     args = parser.parse_args()
 
     cam = cv2.VideoCapture(int(args.source))
@@ -276,10 +281,24 @@ def main() -> int:
                 if session.next_face is None:
                     result = finish(session, args.expect)
                     report(result)
+                    if not args.no_view:
+                        open_viewer(result)
     finally:
         cam.release()
         cv2.destroyAllWindows()
     return 0
+
+
+def open_viewer(result: Result) -> subprocess.Popen | None:
+    """Play the solution on the scanned cube in sim_view.py.
+
+    A separate process: Ursina runs its own window and event loop and can start only
+    once per process, and the scan window keeps running, so 'n' still starts a new scan.
+    """
+    if not result.solution:
+        return None
+    viewer = Path(__file__).with_name("sim_view.py")
+    return subprocess.Popen([sys.executable, str(viewer), str(result.folder / "scan.json")])
 
 
 def report(result: Result) -> None:
