@@ -78,8 +78,8 @@ def _stickers() -> list[tuple[tuple[int, ...], tuple[int, ...]]]:
     return out
 
 
-_STICKERS = _stickers()
-_WHERE = {s: k for k, s in enumerate(_STICKERS)}
+STICKERS = _stickers()
+_WHERE = {s: k for k, s in enumerate(STICKERS)}
 
 
 def _quarter_turn(face: str) -> list[int]:
@@ -91,7 +91,7 @@ def _quarter_turn(face: str) -> list[int]:
         return tuple(int(x) for x in a * (a @ v) - np.cross(a, v))
 
     perm = list(range(54))
-    for i, (p, n) in enumerate(_STICKERS):
+    for i, (p, n) in enumerate(STICKERS):
         if np.dot(p, a) == 1:
             perm[_WHERE[(rot(p), rot(n))]] = i
     return perm
