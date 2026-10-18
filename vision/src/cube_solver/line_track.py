@@ -26,9 +26,9 @@ Measured 2026-10-03 on the recorded clips, labelled frames scored
     empty room, 366       no grid on any frame
     per frame             mean 83 ms, median 40 ms (track_view ~250-290 ms)
 
-    uv run line_track.py                                   live, camera 0
-    uv run line_track.py 1                                 live, camera 1
-    uv run line_track.py ../data/clips/2026-10-02_122600   play a recorded clip
+    uv run python -m cube_solver.line_track                                   live, camera 0
+    uv run python -m cube_solver.line_track 1                                 live, camera 1
+    uv run python -m cube_solver.line_track ../data/clips/2026-10-02_122600   play a recorded clip
 
 COLOURS
     green grid    tracked: snapped onto the seams this frame
@@ -51,8 +51,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-import perception as pc
-import track_view as tv
+from cube_solver import perception as pc
+from cube_solver import track_view as tv
 
 # ------------------------------------------------------------- parameters
 TAU = 20.0             # response = 1 - exp(-Laplacian / TAU): saturates strong edges

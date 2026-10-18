@@ -18,7 +18,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from cube_model import _AXES
+from cube_solver.cube_model import _AXES
 
 SIZE = 220                       # px, square inset
 HOLD_START, MOVE, HOLD_END = 0.4, 1.8, 0.8   # s per loop of one step's animation

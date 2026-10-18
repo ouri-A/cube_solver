@@ -3,8 +3,8 @@ import random
 import numpy as np
 import pytest
 
-from cube_model import CENTRES, FACES, SOLVED, apply_moves, random_moves
-from resolve import resolve
+from cube_solver.cube_model import CENTRES, FACES, SOLVED, apply_moves, random_moves
+from cube_solver.resolve import resolve
 
 # Rough LAB of the six colours, for code tests only. The real test uses your scans.
 NOMINAL = [(95, 0, 0), (88, -6, 78), (45, 62, 45), (62, 42, 62), (58, -52, 38), (38, 12, -50)]

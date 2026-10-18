@@ -3,9 +3,9 @@ import random
 import cv2
 import numpy as np
 
-import scan
-from cube_model import SOLVED, apply_moves
-from sample import _SYMMETRIES
+from cube_solver import scan
+from cube_solver.cube_model import SOLVED, apply_moves
+from cube_solver.sample import _SYMMETRIES
 
 NOMINAL = [(95, 0, 0), (88, -6, 78), (45, 62, 45), (62, 42, 62), (58, -52, 38), (38, 12, -50)]
 
@@ -78,7 +78,7 @@ def test_viewer_opens_on_the_saved_scan(tmp_path, monkeypatch):
     result = scan.Result(resolution=None, solution="R U", error=None, wrong=None, folder=tmp_path)
     scan.open_viewer(result)
     (args,) = FakePopen.calls
-    assert args[1].endswith("sim_view.py") and args[2] == str(tmp_path / "scan.json")
+    assert args[1:3] == ["-m", "cube_solver.sim_view"] and args[3] == str(tmp_path / "scan.json")
 
 
 def test_no_viewer_without_a_solution(tmp_path, monkeypatch):
@@ -179,4 +179,4 @@ def test_main_reports_and_opens_the_viewer(tmp_path, monkeypatch, capsys):
     assert Camera.released
     assert "solution" in capsys.readouterr().out
     (args,) = FakePopen.calls
-    assert args[2].endswith("scan.json")
+    assert args[3].endswith("scan.json")

@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-import guide_anim as ga
-from cube_model import _AXES
+from cube_solver import guide_anim as ga
+from cube_solver.cube_model import _AXES
 
 
 def facing_camera(M):

@@ -24,7 +24,7 @@ letter of a face.
 Every real piece is used exactly once, so a misread sticker is outvoted by
 the other stickers on its piece.
 
-    uv run resolve.py scans/<scan>.json      re-resolve a saved scan
+    uv run python -m cube_solver.resolve scans/<scan>.json      re-resolve a saved scan
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ from pathlib import Path
 
 import numpy as np
 
-from cube_model import CENTRES, CORNER_SLOTS, CORNERS, EDGE_SLOTS, EDGES, FACES, Check, check
+from cube_solver.cube_model import CENTRES, CORNER_SLOTS, CORNERS, EDGE_SLOTS, EDGES, FACES, Check, check
 
 SAME_KIND = 1e6          # TSP distance between two real or two scanned pieces
 MAX_ROUNDS = 5           # match / refine rounds before giving up on convergence

@@ -24,9 +24,9 @@ seam, skeleton and crossing stages unchanged and adds three things on top:
 Offline on the labelled frames: right grid on 11/21 solved faces and 16/17
 scrambled (crossings-only lattice: 2 and 5), no grid on 366 empty-room frames.
 
-    uv run track_view.py                                   live, camera 0
-    uv run track_view.py 1                                 live, camera 1
-    uv run track_view.py ../data/clips/2026-10-02_122600   play a recorded clip
+    uv run python -m cube_solver.track_view                                   live, camera 0
+    uv run python -m cube_solver.track_view 1                                 live, camera 1
+    uv run python -m cube_solver.track_view ../data/clips/2026-10-02_122600   play a recorded clip
 
 COLOURS
     green grid    confirmed by this frame's detections
@@ -53,9 +53,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from perception import (GAP_MAX, GAP_MIN, MERGE, ARM_R, crossing_number,
-                        interior_crossings, merge_points, seam_mask,
-                        square_corners, zhang_suen)
+from cube_solver.perception import (GAP_MAX, GAP_MIN, MERGE, ARM_R, crossing_number,
+                                    interior_crossings, merge_points, seam_mask,
+                                    square_corners, zhang_suen)
 
 # ------------------------------------------------------------- parameters
 # Dots

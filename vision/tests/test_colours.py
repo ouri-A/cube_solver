@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
 
-import sim_view
-from colours import face_colours
-from cube_model import FACES
-from sample import lab_to_bgr
+from cube_solver import sim_view
+from cube_solver.colours import face_colours
+from cube_solver.cube_model import FACES
+from cube_solver.sample import lab_to_bgr
 
 LAB = {"U": [95, 0, 0], "R": [45, 65, 45], "F": [55, -60, 40],
        "D": [90, -5, 85], "L": [65, 45, 70], "B": [35, 20, -65]}

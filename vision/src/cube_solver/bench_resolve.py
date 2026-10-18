@@ -9,8 +9,8 @@ scan, so all 54 stickers share that scan's lighting; the centre references
 are that scan's real centre medians. The resolver must give back the exact
 scramble.
 
-    uv run bench_resolve.py scans/<window>/scan.json scans/<lights>/scan.json
-    uv run bench_resolve.py scans/*/scan.json --cubes 2000
+    uv run python -m cube_solver.bench_resolve scans/<window>/scan.json scans/<lights>/scan.json
+    uv run python -m cube_solver.bench_resolve scans/*/scan.json --cubes 2000
 
 Reported per scan: right, wrong-but-legal (the dangerous kind: it would be
 solved and the solution would be wrong), and illegal (caught by the checks),
@@ -26,8 +26,8 @@ from pathlib import Path
 
 import numpy as np
 
-from cube_model import CENTRES, FACES, SOLVED, apply_moves, random_moves
-from resolve import resolve
+from cube_solver.cube_model import CENTRES, FACES, SOLVED, apply_moves, random_moves
+from cube_solver.resolve import resolve
 
 
 def pools(scan: dict) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:

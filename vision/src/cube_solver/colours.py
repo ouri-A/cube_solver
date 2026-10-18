@@ -9,8 +9,8 @@ from collections.abc import Mapping
 
 import numpy as np
 
-from cube_model import FACES
-from sample import lab_to_bgr
+from cube_solver.cube_model import FACES
+from cube_solver.sample import lab_to_bgr
 
 
 def face_colours(lab_means: Mapping[str, np.ndarray], state: str) -> dict[str, tuple[float, float, float]]:

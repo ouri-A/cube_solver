@@ -2,8 +2,8 @@
 """
 3D view of a cube state, playing its solution.
 
-    uv run sim_view.py scans/<time>/scan.json    the scanned state in the scan's own colours, its saved solution
-    uv run sim_view.py <54-letter state>          any kociemba state, standard colours, solved by kociemba
+    uv run python -m cube_solver.sim_view scans/<time>/scan.json    the scanned state in the scan's own colours, its saved solution
+    uv run python -m cube_solver.sim_view <54-letter state>         any kociemba state, standard colours, solved by kociemba
 
     space   play / pause        right   one move forward        left   one move back
     Right-drag orbits, scroll zooms.
@@ -26,8 +26,8 @@ from pathlib import Path
 
 import numpy as np
 
-from colours import face_colours
-from cube_model import FACES, SOLVED, STICKERS, apply_moves
+from cube_solver.colours import face_colours
+from cube_solver.cube_model import FACES, SOLVED, STICKERS, apply_moves
 
 CUBIE = 0.96      # cubie edge, as a fraction of the 1-unit spacing between cubie centres
 STICKER = 0.84    # sticker edge, same units

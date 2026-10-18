@@ -51,7 +51,7 @@ import numpy as np
 
 # The package sits one level below the project root; captures/ belongs to the
 # project, not to the package.
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]   # src/cube_solver/ -> vision/ -> repo root
 DEFAULT_CAPTURE_DIR = PROJECT_ROOT / "captures"
 
 WINDOW = "perception"

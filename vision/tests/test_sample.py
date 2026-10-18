@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from sample import _SYMMETRIES, read_face, upright
+from cube_solver.sample import _SYMMETRIES, read_face, upright
 
 
 def similarity(theta_deg, pitch=50.0, x0=200.0, y0=150.0):

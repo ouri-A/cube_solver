@@ -4,9 +4,9 @@ import random
 import numpy as np
 import pytest
 
-import sim_view
-from cube_model import FACES, SOLVED, apply_moves, random_moves
-from sample import lab_to_bgr
+from cube_solver import sim_view
+from cube_solver.cube_model import FACES, SOLVED, apply_moves, random_moves
+from cube_solver.sample import lab_to_bgr
 
 # One LAB colour per face, far apart.
 LAB = {"U": [95, 0, 0], "R": [45, 65, 45], "F": [55, -60, 40],

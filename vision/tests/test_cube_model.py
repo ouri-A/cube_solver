@@ -3,7 +3,7 @@ import random
 import kociemba
 import pytest
 
-from cube_model import FACES, SOLVED, apply_moves, check, random_moves
+from cube_solver.cube_model import FACES, SOLVED, apply_moves, check, random_moves
 
 
 @pytest.mark.parametrize("face", FACES)

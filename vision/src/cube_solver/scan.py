@@ -24,11 +24,11 @@ checks, solution) and one PNG per face, so it can be re-resolved offline.
 When the scan solves, sim_view.py opens on it in its own window and plays
 the solution on the scanned cube.
 
-    uv run scan.py                     camera 0
-    uv run scan.py 1                   camera 1
-    uv run scan.py --mirror            the camera delivers a mirrored image
-    uv run scan.py --no-view           do not open the 3D solve viewer
-    uv run scan.py --expect "R U F'"   scramble a solved cube with these moves
+    uv run python -m cube_solver.scan                     camera 0
+    uv run python -m cube_solver.scan 1                   camera 1
+    uv run python -m cube_solver.scan --mirror            the camera delivers a mirrored image
+    uv run python -m cube_solver.scan --no-view           do not open the 3D solve viewer
+    uv run python -m cube_solver.scan --expect "R U F'"   scramble a solved cube with these moves
                                        (holding it as you will for FRONT),
                                        then scan: wrong stickers are listed
 
@@ -54,12 +54,12 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-import line_track as lt
-import guide_anim
-from colours import face_colours
-from cube_model import FACES, SOLVED, apply_moves
-from resolve import Resolution, resolve
-from sample import FaceReading, lab_to_bgr, read_face
+from cube_solver import guide_anim
+from cube_solver import line_track as lt
+from cube_solver.colours import face_colours
+from cube_solver.cube_model import FACES, SOLVED, apply_moves
+from cube_solver.resolve import Resolution, resolve
+from cube_solver.sample import FaceReading, lab_to_bgr, read_face
 
 ORDER = "FRBLUD"
 INSTRUCTIONS = {
@@ -314,8 +314,8 @@ def open_viewer(result: Result) -> subprocess.Popen | None:
     """
     if not result.solution:
         return None
-    viewer = Path(__file__).with_name("sim_view.py")
-    return subprocess.Popen([sys.executable, str(viewer), str(result.folder / "scan.json")])
+    return subprocess.Popen([sys.executable, "-m", "cube_solver.sim_view",
+                             str(result.folder / "scan.json")])
 
 
 def report(result: Result) -> None:
