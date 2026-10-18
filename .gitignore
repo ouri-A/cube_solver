@@ -2,3 +2,8 @@
 __pycache__/
 *.pyc
 scans/
+
+# colcon output: the repo root is the ROS 2 workspace
+/build/
+/install/
+/log/
