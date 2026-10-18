@@ -25,8 +25,8 @@ from pathlib import Path
 
 import numpy as np
 
+from colours import face_colours
 from cube_model import FACES, SOLVED, STICKERS, apply_moves
-from sample import lab_to_bgr
 
 CUBIE = 0.96      # cubie edge, as a fraction of the 1-unit spacing between cubie centres
 STICKER = 0.84    # sticker edge, same units
@@ -98,14 +98,8 @@ class Pieces:
 
 # ------------------------------------------------------------------ loading
 def scan_colours(scan: dict) -> dict[str, tuple[float, float, float]]:
-    """Each face letter's colour as RGB 0-1: the mean LAB of every sticker the scan gave that letter."""
-    lab = np.concatenate([np.asarray(scan["faces"][f]["lab_mean"], float) for f in FACES])
-    letters = np.array(list(scan["state"]))
-    out = {}
-    for f in FACES:
-        b, g, r = lab_to_bgr(lab[letters == f].mean(axis=0))
-        out[f] = (r / 255, g / 255, b / 255)
-    return out
+    """Each face letter's colour as RGB 0-1, from a loaded scan.json (see colours.face_colours)."""
+    return face_colours({f: scan["faces"][f]["lab_mean"] for f in FACES}, scan["state"])
 
 
 def load(source: str) -> tuple[str, dict[str, tuple[float, float, float]], str, str]:
