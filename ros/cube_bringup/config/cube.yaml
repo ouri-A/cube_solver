@@ -1,0 +1,9 @@
+# Parameters for every node in cube.launch.py, keyed by node name.
+scanner:
+  ros__parameters:
+    camera: 0          # /dev/videoN to scan with
+    mirror: false      # true if the camera delivers a mirrored image
+
+executor:
+  ros__parameters:
+    seconds_per_move: 1.0   # how long the stand-in takes per move
