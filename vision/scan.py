@@ -46,6 +46,7 @@ import json
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -55,6 +56,7 @@ import numpy as np
 
 import line_track as lt
 import guide_anim
+from colours import face_colours
 from cube_model import FACES, SOLVED, apply_moves
 from resolve import Resolution, resolve
 from sample import FaceReading, lab_to_bgr, read_face
@@ -115,6 +117,7 @@ class Result:
     error: str | None
     wrong: list[str] | None      # with --expect: stickers that differ, e.g. "R3 read U want F"
     folder: Path
+    colours: dict[str, tuple[float, float, float]] | None = None   # RGB 0-1 per face letter, as read
 
 
 def finish(session: ScanSession, expect: str | None) -> Result:
@@ -136,7 +139,8 @@ def finish(session: ScanSession, expect: str | None) -> Result:
         wrong = [f"{FACES[i // 9]}{i % 9 + 1} read {g} want {w}"
                  for i, (g, w) in enumerate(zip(res.state, want)) if g != w]
     folder = save(session, res, solution, error, expect, wrong)
-    return Result(res, solution, error, wrong, folder)
+    colours = face_colours({f: r.lab_mean for f, r in session.readings.items()}, res.state)
+    return Result(res, solution, error, wrong, folder, colours)
 
 
 def save(session, res, solution, error, expect, wrong) -> Path:
@@ -236,56 +240,69 @@ def main() -> int:
     if not cam.isOpened():
         print(f"ERROR: could not open camera {args.source}.", file=sys.stderr)
         return 1
-    tracker, session = lt.LineTracker(), ScanSession(mirror=args.mirror)
-    result, flash, flash_until = None, None, 0.0
-    step_face, step_started = None, time.time()      # restart the guide animation on each new step
+
+    def show(result: Result) -> None:
+        report(result)
+        if not args.no_view:
+            open_viewer(result)
+
     try:
-        while True:
-            ok, frame = cam.read()
-            if not ok:
-                print("ERROR: camera stopped delivering frames.", file=sys.stderr)
-                return 1
-            started = time.perf_counter()
-            mode = tracker.step(frame)
-            ms = (time.perf_counter() - started) * 1000.0
-            locked = tracker.H is not None and mode in LOCKED
-
-            view = frame.copy()
-            if result is None:
-                lt.draw(view, tracker, mode, ms)
-            draw_strip(view, session)
-            if session.next_face != step_face:
-                step_face, step_started = session.next_face, time.time()
-            if result is None:
-                draw_prompt(view, session, locked, flash if time.time() < flash_until else None,
-                            time.time() - step_started)
-            else:
-                draw_result(view, result)
-            cv2.imshow(WINDOW, view)
-
-            key = cv2.waitKey(1) & 0xFF
-            if key == KEY_ESC:
-                break
-            if key == ord("r"):
-                tracker.reset()
-            elif key == ord("n"):
-                session, result = ScanSession(mirror=args.mirror), None
-            elif key in (KEY_BACKSPACE, ord("u")) and result is None:
-                session.undo()
-            elif key == KEY_SPACE and result is None:
-                if not locked:
-                    flash, flash_until = "No grid locked - hold the face still.", time.time() + 1.5
-                    continue
-                face = session.capture(frame, tracker.H)
-                print(f"read {face}")
-                if session.next_face is None:
-                    result = finish(session, args.expect)
-                    report(result)
-                    if not args.no_view:
-                        open_viewer(result)
+        return run(cam, args.mirror, args.expect, show)
     finally:
         cam.release()
         cv2.destroyAllWindows()
+
+
+def run(cam, mirror: bool, expect: str | None, on_result: Callable[[Result], None]) -> int:
+    """The scan window's loop, until ESC (0) or the camera stops (1).
+
+    cam is anything with OpenCV's read(). on_result gets each finished scan: main()
+    prints it and opens the viewer, a ROS node publishes it instead.
+    """
+    tracker, session = lt.LineTracker(), ScanSession(mirror=mirror)
+    result, flash, flash_until = None, None, 0.0
+    step_face, step_started = None, time.time()      # restart the guide animation on each new step
+    while True:
+        ok, frame = cam.read()
+        if not ok:
+            print("ERROR: camera stopped delivering frames.", file=sys.stderr)
+            return 1
+        started = time.perf_counter()
+        mode = tracker.step(frame)
+        ms = (time.perf_counter() - started) * 1000.0
+        locked = tracker.H is not None and mode in LOCKED
+
+        view = frame.copy()
+        if result is None:
+            lt.draw(view, tracker, mode, ms)
+        draw_strip(view, session)
+        if session.next_face != step_face:
+            step_face, step_started = session.next_face, time.time()
+        if result is None:
+            draw_prompt(view, session, locked, flash if time.time() < flash_until else None,
+                        time.time() - step_started)
+        else:
+            draw_result(view, result)
+        cv2.imshow(WINDOW, view)
+
+        key = cv2.waitKey(1) & 0xFF
+        if key == KEY_ESC:
+            break
+        if key == ord("r"):
+            tracker.reset()
+        elif key == ord("n"):
+            session, result = ScanSession(mirror=mirror), None
+        elif key in (KEY_BACKSPACE, ord("u")) and result is None:
+            session.undo()
+        elif key == KEY_SPACE and result is None:
+            if not locked:
+                flash, flash_until = "No grid locked - hold the face still.", time.time() + 1.5
+                continue
+            face = session.capture(frame, tracker.H)
+            print(f"read {face}")
+            if session.next_face is None:
+                result = finish(session, expect)
+                on_result(result)
     return 0
 
 

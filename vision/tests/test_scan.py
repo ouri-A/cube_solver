@@ -87,3 +87,96 @@ def test_no_viewer_without_a_solution(tmp_path, monkeypatch):
     result = scan.Result(resolution=None, solution=None, error="parity", wrong=None, folder=tmp_path)
     assert scan.open_viewer(result) is None
     assert FakePopen.calls == []
+
+
+class FakeTracker:
+    """Always locked, on whichever homography the test painted the current frame with."""
+
+    def __init__(self, homographies):
+        self.homographies, self.H = iter(homographies), None
+        self.det, self.score, self.confidence = None, None, 1.0
+
+    def step(self, frame):
+        self.H = next(self.homographies)
+        return "tracked"
+
+    def reset(self):
+        pass
+
+
+class FakeCamera:
+    def __init__(self, frames):
+        self.frames = iter(frames)
+
+    def read(self):
+        frame = next(self.frames, None)
+        return frame is not None, frame
+
+
+def test_run_hands_each_finished_scan_to_on_result(tmp_path, monkeypatch):
+    monkeypatch.setattr(scan, "SCAN_DIR", tmp_path)
+    rng = random.Random(3)
+    state = apply_moves(SOLVED, "F2 R' U B")
+    colours = dict(zip("URFDLB", (lab_bgr(c) for c in rng.sample(NOMINAL, 6))))
+    frames, homographies = [], []
+    for face in scan.ORDER:
+        k = "URFDLB".index(face)
+        H = similarity(rng.uniform(-30, 30))
+        frames.append(paint_face(state[9 * k:9 * k + 9], colours, H))
+        homographies.append(H @ rng.choice(_SYMMETRIES))
+    frames.append(frames[-1])                      # one more frame, on which ESC is pressed
+    homographies.append(homographies[-1])
+    keys = iter([scan.KEY_SPACE] * 6 + [scan.KEY_ESC])
+    monkeypatch.setattr(scan.lt, "LineTracker", lambda: FakeTracker(homographies))
+    monkeypatch.setattr(scan.cv2, "imshow", lambda *a: None)
+    monkeypatch.setattr(scan.cv2, "waitKey", lambda ms: next(keys))
+    got = []
+    assert scan.run(FakeCamera(frames), False, None, got.append) == 0
+    (result,) = got
+    assert result.resolution.state == state
+    assert apply_moves(state, result.solution) == SOLVED
+    assert set(result.colours) == set("URFDLB")
+    assert all(0 <= c <= 1 for rgb in result.colours.values() for c in rgb)
+
+
+def test_run_returns_1_when_the_camera_stops():
+    assert scan.run(FakeCamera([]), False, None, lambda r: None) == 1
+
+
+def test_main_reports_and_opens_the_viewer(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(scan, "SCAN_DIR", tmp_path)
+    rng = random.Random(5)
+    state = apply_moves(SOLVED, "U R2 D'")
+    colours = dict(zip("URFDLB", (lab_bgr(c) for c in rng.sample(NOMINAL, 6))))
+    frames, homographies = [], []
+    for face in scan.ORDER:
+        k = "URFDLB".index(face)
+        H = similarity(rng.uniform(-30, 30))
+        frames.append(paint_face(state[9 * k:9 * k + 9], colours, H))
+        homographies.append(H)
+    frames.append(frames[-1])
+    homographies.append(homographies[-1])
+
+    class Camera(FakeCamera):
+        released = False
+
+        def isOpened(self):
+            return True
+
+        def release(self):
+            Camera.released = True
+
+    keys = iter([scan.KEY_SPACE] * 6 + [scan.KEY_ESC])
+    monkeypatch.setattr(scan.cv2, "VideoCapture", lambda index: Camera(frames))
+    monkeypatch.setattr(scan.lt, "LineTracker", lambda: FakeTracker(homographies))
+    monkeypatch.setattr(scan.cv2, "imshow", lambda *a: None)
+    monkeypatch.setattr(scan.cv2, "waitKey", lambda ms: next(keys))
+    monkeypatch.setattr(scan.cv2, "destroyAllWindows", lambda: None)
+    monkeypatch.setattr(scan.subprocess, "Popen", FakePopen)
+    monkeypatch.setattr(scan.sys, "argv", ["scan.py", "0"])
+    FakePopen.calls = []
+    assert scan.main() == 0
+    assert Camera.released
+    assert "solution" in capsys.readouterr().out
+    (args,) = FakePopen.calls
+    assert args[2].endswith("scan.json")
