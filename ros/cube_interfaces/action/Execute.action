@@ -1,0 +1,13 @@
+# Turn the cube through a list of moves, in order.
+
+# Goal
+string[] moves      # face turns, e.g. ["R", "U2", "F'"]
+---
+# Result
+bool success        # every move was carried out
+uint32 done         # how many moves were carried out
+string message      # why it stopped early; empty on success
+---
+# Feedback
+uint32 done         # moves carried out so far
+string last_move    # the move just carried out
