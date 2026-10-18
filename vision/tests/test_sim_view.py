@@ -113,3 +113,57 @@ def test_pieces_match_cube_model_after_every_move(moves):
 def test_a_turn_moves_nine_cubies():
     for f in FACES:
         assert len(sim_view.Pieces().turn(f)) == 9
+
+
+class Hud:
+    text = ""
+
+
+def recording_player(solution: str) -> tuple[sim_view.Player, list[str]]:
+    """A Player whose turns are recorded instead of drawn; the test ends each turn itself."""
+    start = apply_moves(SOLVED, sim_view.inverse(solution))   # a cube this solution solves
+    player = sim_view.Player({}, start, solution, Hud())
+    started = []
+
+    def animate(move):
+        started.append(move)
+        player.busy = True
+
+    player.animate = animate
+    return player, started
+
+
+def test_follow_animates_a_move_straight_away_when_idle():
+    player, started = recording_player("R U F")
+    player.follow("R")
+    assert started == ["R"] and player.done == 1
+
+
+def test_follow_queues_moves_that_arrive_mid_turn_and_drops_none():
+    player, started = recording_player("R U F2 D'")
+    for move in "R U F2 D'".split():
+        player.follow(move)
+    assert started == ["R"]
+    for _ in range(3):
+        player.turned()
+    assert started == ["R", "U", "F2", "D'"]
+    player.turned()
+    assert player.done == 4 and not player.busy and not player.queue
+    assert "solved" in player.hud.text
+
+
+def test_follow_rejects_a_move_out_of_order():
+    player, _ = recording_player("R U")
+    player.follow("R")
+    with pytest.raises(ValueError, match="move 2 should be U, got F"):
+        player.follow("F")
+    with pytest.raises(ValueError):
+        recording_player("R")[0].follow("R'")
+
+
+def test_follow_rejects_a_move_past_the_end():
+    player, _ = recording_player("R")
+    player.follow("R")
+    player.turned()
+    with pytest.raises(ValueError, match="should be None"):
+        player.follow("U")

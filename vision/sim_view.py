@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections import deque
 from pathlib import Path
 
 import numpy as np
@@ -136,7 +137,11 @@ def build(state: str, colours: dict) -> dict:
 
 
 class Player:
-    """Steps through a solution, animating each turn of the drawn cubies."""
+    """Steps through a solution, animating each turn of the drawn cubies.
+
+    Either it plays the solution itself (keys), or it follows moves reported as done
+    somewhere else (follow()), so the drawn cube shows what the real one did.
+    """
 
     def __init__(self, cubies: dict, start: str, solution: str, hud) -> None:
         self.cubies, self.start, self.moves, self.hud = cubies, start, solution.split(), hud
@@ -144,6 +149,7 @@ class Player:
         self.done = 0            # moves applied so far
         self.busy = False        # a turn is animating
         self.playing = False
+        self.queue: deque[str] = deque()   # followed moves waiting for the current turn to finish
         self.show()
 
     def show(self) -> None:
@@ -185,13 +191,38 @@ class Player:
                 c.position = to_scene(self.pieces.pos[h])   # snap off float drift; the rotation keeps
                                                             # its float error (~1e-7 rad a turn), harmless
             destroy(pivot)
-            self.busy = False
-            self.show()
-            if self.playing:
-                invoke(self.step, delay=GAP_TIME)
+            self.turned()
 
         self.busy = True
         invoke(finish, delay=duration + 0.02)
+
+    def turned(self) -> None:
+        """A turn finished animating: show it, then start whatever comes next."""
+        self.busy = False
+        self.show()
+        if self.queue:
+            self.done += 1
+            self.animate(self.queue.popleft())
+        elif self.playing:
+            from ursina import invoke
+            invoke(self.step, delay=GAP_TIME)
+
+    def follow(self, move: str) -> None:
+        """Animate a move that was done elsewhere: the executor now, the robot later.
+
+        Moves must arrive in solution order. One that arrives while a turn is still
+        animating waits in the queue, so none is dropped however fast they come.
+        """
+        k = self.done + len(self.queue)
+        expected = self.moves[k] if k < len(self.moves) else None
+        if move != expected:
+            raise ValueError(f"move {k + 1} should be {expected}, got {move}")
+        self.playing = False
+        if self.busy:
+            self.queue.append(move)
+        else:
+            self.done += 1
+            self.animate(move)
 
     def key(self, key: str) -> None:
         if key == "space":
