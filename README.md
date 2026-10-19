@@ -4,7 +4,7 @@ Reads the full state of a 3x3 Rubik's cube from an ordinary webcam and solves it
 
 It works on stickered and stickerless cubes, needs no manual grid alignment and no colour calibration, and runs in front of an arbitrary background.
 
-![The single window: camera on the left, the scanned cube playing its solution on the right](docs/window.jpg)
+![The single window mid-scan: the grid locked on the cube in hand (left) and the faces read so far on the 3D cube (right)](docs/window.jpg)
 
 ## How it works
 
