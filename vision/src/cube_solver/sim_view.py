@@ -122,18 +122,36 @@ def load(source: str) -> tuple[str, dict[str, tuple[float, float, float]], str, 
 # --------------------------------------------------------------------- view
 def build(state: str, colours: dict) -> dict:
     """Make one black cube per cubie and one coloured quad per sticker. Returns cubie entities by solved position."""
+    return build_cube([colours[letter] for letter in state])[0]
+
+
+def build_cube(sticker_rgb: list) -> tuple[dict, list]:
+    """The cube with each sticker in its own colour, RGB 0-1, in kociemba order.
+
+    Returns (cubie entities by solved position, sticker entities in kociemba order),
+    so a scan in progress can repaint stickers as faces are read (paint()).
+    """
     from ursina import Entity, color
 
     cubies = {p: Entity(model="cube", color=color.black, position=to_scene(p), scale=CUBIE)
               for p in cubie_positions()}
+    stickers = []
     for k, (p, n) in enumerate(STICKERS):
         axis = int(np.flatnonzero(n)[0])
-        Entity(parent=cubies[p], model="quad", double_sided=True,
-               color=color.rgb(*colours[state[k]]),
-               position=tuple(LIFT * c for c in to_scene(n)),
-               rotation=[(0, 90, 0), (90, 0, 0), (0, 0, 0)][axis],   # quad is in xy; turn it to face its normal
-               scale=STICKER / CUBIE)
-    return cubies
+        stickers.append(Entity(parent=cubies[p], model="quad", double_sided=True,
+                               color=color.rgb(*sticker_rgb[k]),
+                               position=tuple(LIFT * c for c in to_scene(n)),
+                               rotation=[(0, 90, 0), (90, 0, 0), (0, 0, 0)][axis],   # quad is in xy; turn it to face its normal
+                               scale=STICKER / CUBIE))
+    return cubies, stickers
+
+
+def paint(stickers: list, sticker_rgb: list) -> None:
+    """Recolour built stickers, RGB 0-1 in kociemba order."""
+    from ursina import color
+
+    for entity, rgb in zip(stickers, sticker_rgb):
+        entity.color = color.rgb(*rgb)
 
 
 class Player:
