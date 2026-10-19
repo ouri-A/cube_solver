@@ -37,7 +37,12 @@ KEYS
     BACKSPACE  undo the last face (or u)
     r          reset the tracker
     n          new scan (after a result)
+    d          show or hide the tracker's numbers
     ESC        quit
+
+The scan itself is Scanner, which holds no camera and opens no window: run() below
+drives it from an OpenCV window, window.py from the single-window UI, and the ROS
+scanner node through run().
 """
 from __future__ import annotations
 
@@ -75,6 +80,8 @@ SCAN_DIR = Path("scans")
 
 WINDOW = "scan"
 KEY_ESC, KEY_SPACE, KEY_BACKSPACE = 27, 32, 8
+KEY_NAMES = {KEY_ESC: "escape", KEY_SPACE: "space", KEY_BACKSPACE: "backspace",
+             **{ord(c): c for c in "undr"}}      # OpenCV key code -> the name Scanner.press takes
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 SWATCH = 12                      # px per sticker in the progress strip
 BANNER = 92                      # px, height of the black instruction bar
@@ -200,7 +207,7 @@ def draw_prompt(view, session: ScanSession, locked: bool, flash: str | None, t: 
         return
     line1, line2 = INSTRUCTIONS[face]
     text(view, f"{len(session.readings) + 1}/6  {line1}", (10, h - 62))
-    text(view, line2 if line2 != "<" else "Copy the cube on the right.", (10, h - 36))
+    text(view, line2 if line2 != "<" else "Copy the small cube.", (10, h - 36))
     status = "grid locked: press SPACE" if locked else "no grid yet"
     text(view, status, (10, h - 10), 0.5, (0, 255, 0) if locked else (0, 160, 255))
     known = {f: [lab_to_bgr(c) for c in r.lab_mean] for f, r in session.readings.items()}
@@ -253,55 +260,92 @@ def main() -> int:
         cv2.destroyAllWindows()
 
 
+class Scanner:
+    """One guided scan, a frame at a time. Holds no camera and opens no window.
+
+    The caller reads frames and keys: step() tracks a frame and draws on it,
+    press() acts on a key against the frame step() saw last.
+    """
+
+    def __init__(self, mirror: bool = False, expect: str | None = None, debug: bool = True) -> None:
+        self.mirror, self.expect = mirror, expect
+        self.debug = debug                          # draw the tracker's numbers on the frame
+        self.tracker = lt.LineTracker()
+        self.session = ScanSession(mirror=mirror)
+        self.result: Result | None = None
+        self.locked = False                         # the last frame's grid can be read
+        self._frame: np.ndarray | None = None
+        self._flash, self._flash_until = None, 0.0
+        self._step_face, self._step_started = None, time.time()   # restarts the guide on each new step
+
+    def step(self, frame: np.ndarray) -> np.ndarray:
+        """Track one frame. Returns a copy with the grid, the face strip and the instruction bar drawn on."""
+        started = time.perf_counter()
+        mode = self.tracker.step(frame)
+        ms = (time.perf_counter() - started) * 1000.0
+        self._frame = frame
+        self.locked = self.tracker.H is not None and mode in LOCKED
+
+        view = frame.copy()
+        if self.result is None:
+            lt.draw(view, self.tracker, mode, ms, text=self.debug)
+        draw_strip(view, self.session)
+        if self.session.next_face != self._step_face:
+            self._step_face, self._step_started = self.session.next_face, time.time()
+        if self.result is None:
+            flash = self._flash if time.time() < self._flash_until else None
+            draw_prompt(view, self.session, self.locked, flash, time.time() - self._step_started)
+        return view
+
+    def press(self, key: str) -> Result | None:
+        """Act on one key. Returns the finished scan on the key that reads the sixth face.
+
+        space reads the face, backspace or u undoes one, n starts a new scan,
+        r resets the tracker, d shows or hides the tracker's numbers.
+        """
+        if key == "r":
+            self.tracker.reset()
+        elif key == "d":
+            self.debug = not self.debug
+        elif key == "n":
+            self.session, self.result = ScanSession(mirror=self.mirror), None
+        elif key in ("backspace", "u") and self.result is None:
+            self.session.undo()
+        elif key == "space" and self.result is None and self._frame is not None:
+            if not self.locked:
+                self._flash, self._flash_until = "No grid locked - hold the face still.", time.time() + 1.5
+                return None
+            face = self.session.capture(self._frame, self.tracker.H)
+            print(f"read {face}")
+            if self.session.next_face is None:
+                self.result = finish(self.session, self.expect)
+                return self.result
+        return None
+
+
 def run(cam, mirror: bool, expect: str | None, on_result: Callable[[Result], None]) -> int:
-    """The scan window's loop, until ESC (0) or the camera stops (1).
+    """The OpenCV scan window's loop, until ESC (0) or the camera stops (1).
 
     cam is anything with OpenCV's read(). on_result gets each finished scan: main()
     prints it and opens the viewer, a ROS node publishes it instead.
     """
-    tracker, session = lt.LineTracker(), ScanSession(mirror=mirror)
-    result, flash, flash_until = None, None, 0.0
-    step_face, step_started = None, time.time()      # restart the guide animation on each new step
+    scanner = Scanner(mirror, expect)
     while True:
         ok, frame = cam.read()
         if not ok:
             print("ERROR: camera stopped delivering frames.", file=sys.stderr)
             return 1
-        started = time.perf_counter()
-        mode = tracker.step(frame)
-        ms = (time.perf_counter() - started) * 1000.0
-        locked = tracker.H is not None and mode in LOCKED
-
-        view = frame.copy()
-        if result is None:
-            lt.draw(view, tracker, mode, ms)
-        draw_strip(view, session)
-        if session.next_face != step_face:
-            step_face, step_started = session.next_face, time.time()
-        if result is None:
-            draw_prompt(view, session, locked, flash if time.time() < flash_until else None,
-                        time.time() - step_started)
-        else:
-            draw_result(view, result)
+        view = scanner.step(frame)
+        if scanner.result is not None:
+            draw_result(view, scanner.result)
         cv2.imshow(WINDOW, view)
 
-        key = cv2.waitKey(1) & 0xFF
-        if key == KEY_ESC:
+        key = KEY_NAMES.get(cv2.waitKey(1) & 0xFF)
+        if key == "escape":
             break
-        if key == ord("r"):
-            tracker.reset()
-        elif key == ord("n"):
-            session, result = ScanSession(mirror=mirror), None
-        elif key in (KEY_BACKSPACE, ord("u")) and result is None:
-            session.undo()
-        elif key == KEY_SPACE and result is None:
-            if not locked:
-                flash, flash_until = "No grid locked - hold the face still.", time.time() + 1.5
-                continue
-            face = session.capture(frame, tracker.H)
-            print(f"read {face}")
-            if session.next_face is None:
-                result = finish(session, expect)
+        if key is not None:
+            result = scanner.press(key)
+            if result is not None:
                 on_result(result)
     return 0
 

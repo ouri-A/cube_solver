@@ -180,3 +180,56 @@ def test_main_reports_and_opens_the_viewer(tmp_path, monkeypatch, capsys):
     assert "solution" in capsys.readouterr().out
     (args,) = FakePopen.calls
     assert args[3].endswith("scan.json")
+
+
+class NeverLocked(FakeTracker):
+    """Finds no grid on any frame."""
+
+    def __init__(self):
+        super().__init__([])
+
+    def step(self, frame):
+        return "none"
+
+
+def test_scanner_reads_only_a_locked_grid(monkeypatch):
+    monkeypatch.setattr(scan.lt, "LineTracker", NeverLocked)
+    scanner = scan.Scanner()
+    scanner.step(paint_face("UUUUUUUUU", {"U": (200, 200, 200)}, similarity(0)))
+    assert not scanner.locked
+    assert scanner.press("space") is None
+    assert scanner.session.readings == {}
+
+
+def test_scanner_keys(tmp_path, monkeypatch):
+    monkeypatch.setattr(scan, "SCAN_DIR", tmp_path)
+    rng = random.Random(11)
+    state = apply_moves(SOLVED, "L D' B2")
+    colours = dict(zip("URFDLB", (lab_bgr(c) for c in rng.sample(NOMINAL, 6))))
+    frames, homographies = [], []
+    for face in scan.ORDER:
+        k = "URFDLB".index(face)
+        H = similarity(rng.uniform(-30, 30))
+        frames.append(paint_face(state[9 * k:9 * k + 9], colours, H))
+        homographies.append(H)
+    homographies = [homographies[0]] + homographies        # the first face is shown twice: read, undone, read again
+    frames = [frames[0]] + frames
+    monkeypatch.setattr(scan.lt, "LineTracker", lambda: FakeTracker(homographies))
+    scanner = scan.Scanner(debug=False)
+
+    scanner.step(frames[0])
+    assert scanner.press("space") is None and scanner.session.next_face == "R"
+    scanner.press("u")
+    assert scanner.session.next_face == "F"
+    results = []
+    for frame in frames[1:]:
+        view = scanner.step(frame)
+        assert view.shape == frame.shape and view is not frame
+        results.append(scanner.press("space"))
+    assert results[:5] == [None] * 5 and results[5] is scanner.result
+    assert scanner.result.resolution.state == state
+    assert scanner.press("space") is None                  # nothing more to read once finished
+    scanner.press("d")
+    assert scanner.debug
+    scanner.press("n")
+    assert scanner.result is None and scanner.session.readings == {}

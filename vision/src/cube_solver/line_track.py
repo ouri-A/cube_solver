@@ -204,7 +204,8 @@ class LineTracker:
 
 
 # ------------------------------------------------------------------ drawing
-def draw(view, tracker, mode, ms):
+def draw(view, tracker, mode, ms, text=True):
+    """The grid in its mode's colour; with text, the tracker's numbers top-left."""
     det = tracker.det
     if tracker.H is not None:
         colour = MODE_COLOUR.get(mode, (200, 200, 200))
@@ -212,6 +213,8 @@ def draw(view, tracker, mode, ms):
         for t in range(4):
             cv2.line(view, tuple(pts[t, 0]), tuple(pts[t, 3]), colour, 2, cv2.LINE_AA)
             cv2.line(view, tuple(pts[0, t]), tuple(pts[3, t]), colour, 2, cv2.LINE_AA)
+    if not text:
+        return
     lines = [mode + ("" if tracker.score is None else
                      f"  {'line score' if mode == 'tracked' else 'contrast'} {tracker.score:.2f}"),
              f"confidence {tracker.confidence:.2f}",
