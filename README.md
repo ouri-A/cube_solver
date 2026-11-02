@@ -6,9 +6,9 @@ Reads the full state of a 3x3 Rubik's cube from an ordinary webcam and solves it
 
 It works on stickered and stickerless cubes of different sizes. You don't line the cube up with a grid and you don't calibrate colours, and the background can be anything.
 
-https://github.com/user-attachments/assets/dc097dc3-7157-4916-b3fd-fec03616e855
+https://github.com/user-attachments/assets/0a885814-9c12-4aeb-ae71-3f3d42d51aac
 
-The clip shows a stickerless cube, a stickered cube and a small stickered cube scanned and solved. It ends with a cube that has one corner twisted by hand, which the program refuses to solve because that state can't be reached by turning.
+The clip shows a stickerless cube scanned and solved, then a cube with one corner twisted by hand, which the program refuses to solve because that state can't be reached by turning. It ends with a stickered cube and a small stickered cube being scanned, sped up, to show the same scanner reading other kinds of cube.
 
 ## How it works
 
