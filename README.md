@@ -1,5 +1,7 @@
 # cube_solver
 
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue) ![ROS 2 Jazzy](https://img.shields.io/badge/ROS%202-Jazzy-22314E) ![OpenCV](https://img.shields.io/badge/OpenCV-5-5C3EE8)
+
 Reads the full state of a 3x3 Rubik's cube from an ordinary webcam and solves it. You show the camera the cube's six faces. The program finds the face in each frame by itself, reads the colours, checks that the result is a cube that can exist, and plays the solution on a 3D model of your cube.
 
 It works on stickered and stickerless cubes of different sizes. You don't line the cube up with a grid and you don't calibrate colours, and the background can be anything.
@@ -20,10 +22,16 @@ The clip shows a stickerless cube, a stickered cube and a small stickered cube s
 
 <p>
   <img src="docs/robot_front.jpg" width="49%" alt="Solver frame, front view: six stepper motors around a cube">
-  <img src="docs/demo.gif" width="49%" alt="The robot solving a cube, with the 3D sim playing the same moves in sync">
+  <img src="docs/robot_side.jpg" width="49%" alt="Solver frame, side view">
 </p>
 
-Six stepper motors grip the cube, one on each centre. The frame and motors are built. The robot node that drives them is not written yet. On the ROS 2 side it will replace the stand-in executor described below.
+<p align="center">
+  <img src="docs/demo.gif" width="100%" alt="The robot solving a cube, with the 3D sim playing the same moves in sync">
+</p>
+
+The robot running a solve at 2x speed, with the sim playing the same moves in sync.
+
+Six stepper motors grip the cube, one on each centre. An ESP32 drives them through A4988 drivers, and today it runs a fixed scramble and its solution from its own firmware, as in the clip above. Three of the six motors turn so far, so that solution uses only those three faces. The ROS 2 robot node, which will take the scanned solution, is not written yet. On the ROS 2 side it will replace the stand-in executor described below.
 
 ## Repository layout
 
