@@ -20,7 +20,7 @@ The clip shows a stickerless cube, a stickered cube and a small stickered cube s
 
 <p>
   <img src="docs/robot_front.jpg" width="49%" alt="Solver frame, front view: six stepper motors around a cube">
-  <img src="docs/robot_side.jpg" width="49%" alt="Solver frame, side view">
+  <img src="docs/demo.gif" width="49%" alt="The robot solving a cube, with the 3D sim playing the same moves in sync">
 </p>
 
 Six stepper motors grip the cube, one on each centre. The frame and motors are built. The robot node that drives them is not written yet. On the ROS 2 side it will replace the stand-in executor described below.
